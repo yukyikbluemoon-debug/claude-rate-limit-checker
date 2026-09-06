@@ -1,244 +1,47 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#0f0f0f">
-    <title>Claude Rate Limit</title>
-    <style>
-        * { box-sizing: border-box; }
-        body { margin: 0; min-height: 100vh; padding: 16px; background: #0f0f0f; color: #fff; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-        .container { width: 100%; max-width: 500px; margin: 0 auto; }
-        .header { display:flex; justify-content:space-between; align-items:center; padding:12px 0 20px; }
-        h1 { margin:0; font-size:18px; }
-        .version { margin-top:4px; color:#777; font-size:11px; }
-        button { border:0; cursor:pointer; color:#fff; }
-        .icon { width:40px; height:40px; border-radius:10px; background:#222; font-size:18px; }
-        .status { display:flex; align-items:center; gap:10px; padding:14px; margin-bottom:16px; border-radius:14px; background:#191919; }
-        .dot { width:10px; height:10px; border-radius:50%; background:#ef4444; }
-        .dot.ok { background:#22c55e; box-shadow:0 0 8px #22c55e; }
-        .status-text { color:#bbb; font-size:13px; }
-        .btn { width:100%; padding:14px; margin-bottom:10px; border-radius:12px; font-size:15px; font-weight:600; background:linear-gradient(135deg,#3b82f6,#8b5cf6); }
-        .btn:disabled { opacity:.4; cursor:not-allowed; }
-        .secondary { background:#222; }
-        .card { padding:16px; margin-bottom:12px; border-radius:14px; background:#191919; }
-        .head { display:flex; justify-content:space-between; margin-bottom:10px; }
-        .label { color:#999; font-size:13px; }
-        .value { font-size:16px; font-weight:600; }
-        .bar { height:6px; margin-bottom:8px; overflow:hidden; border-radius:6px; background:#292929; }
-        .fill { width:0; height:100%; border-radius:6px; background:linear-gradient(90deg,#3b82f6,#8b5cf6); transition:width .3s; }
-        .fill.warn { background:linear-gradient(90deg,#f59e0b,#ef4444); }
-        .reset { color:#777; font-size:11px; }
-        .info { display:none; padding:14px; margin-top:16px; border:1px solid #244b80; border-radius:12px; background:#101d2d; color:#bbb; text-align:center; font-size:13px; }
-        .modal { display:none; position:fixed; inset:0; z-index:10; align-items:flex-end; justify-content:center; background:rgba(0,0,0,.85); }
-        .modal.show { display:flex; }
-        .modal-box { width:100%; max-width:500px; padding:20px; border-radius:20px 20px 0 0; background:#1a1a1a; }
-        .modal-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
-        .modal-head h2 { margin:0; font-size:18px; }
-        .close { width:32px; height:32px; border-radius:8px; background:#292929; }
-        label { display:block; margin-bottom:6px; color:#bbb; font-size:13px; }
-        input { width:100%; padding:12px; border:1px solid #333; border-radius:10px; outline:none; background:#111; color:#fff; font-size:14px; }
-        input:focus { border-color:#3b82f6; }
-        small { display:block; margin-top:5px; color:#777; font-size:11px; }
-        a { color:#60a5fa; }
-        .overlay { display:none; position:fixed; inset:0; z-index:20; align-items:center; justify-content:center; flex-direction:column; gap:12px; background:rgba(0,0,0,.8); }
-        .overlay.show { display:flex; }
-        .spinner { width:36px; height:36px; border:3px solid #333; border-top-color:#3b82f6; border-radius:50%; animation:spin .8s linear infinite; }
-        @keyframes spin { to { transform:rotate(360deg); } }
-        .hidden { display:none !important; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0f0f0f">
+<title>Claude Rate Limit</title>
+<style>
+*{box-sizing:border-box}body{margin:0;min-height:100vh;padding:16px;background:#0f0f0f;color:#fff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.container{width:100%;max-width:500px;margin:0 auto}.header{display:flex;justify-content:space-between;align-items:center;padding:12px 0 20px}h1{margin:0;font-size:18px}.version{margin-top:4px;color:#777;font-size:11px}button{border:0;cursor:pointer;color:#fff}.icon{width:40px;height:40px;border-radius:10px;background:#222;font-size:18px}.status{display:flex;align-items:center;gap:10px;padding:14px;margin-bottom:16px;border-radius:14px;background:#191919}.dot{width:10px;height:10px;border-radius:50%;background:#ef4444}.dot.ok{background:#22c55e;box-shadow:0 0 8px #22c55e}.status-text{color:#bbb;font-size:13px}.btn{width:100%;padding:14px;margin-bottom:10px;border-radius:12px;font-size:15px;font-weight:600;background:linear-gradient(135deg,#3b82f6,#8b5cf6)}.btn:disabled{opacity:.4;cursor:not-allowed}.secondary{background:#222}.card{padding:16px;margin-bottom:12px;border-radius:14px;background:#191919}.head{display:flex;justify-content:space-between;margin-bottom:10px}.label{color:#999;font-size:13px}.value{font-size:16px;font-weight:600}.reset{color:#777;font-size:11px}.info{display:none;padding:14px;margin-top:16px;border:1px solid #244b80;border-radius:12px;background:#101d2d;color:#bbb;text-align:center;font-size:13px}.modal{display:none;position:fixed;inset:0;z-index:10;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.85)}.modal.show{display:flex}.modal-box{width:100%;max-width:500px;padding:20px;border-radius:20px 20px 0 0;background:#1a1a1a}.modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}.modal-head h2{margin:0;font-size:18px}.close{width:32px;height:32px;border-radius:8px;background:#292929}label{display:block;margin-bottom:6px;color:#bbb;font-size:13px}input{width:100%;padding:12px;border:1px solid #333;border-radius:10px;outline:none;background:#111;color:#fff;font-size:14px}input:focus{border-color:#3b82f6}small{display:block;margin-top:5px;color:#777;font-size:11px}a{color:#60a5fa}.overlay{display:none;position:fixed;inset:0;z-index:20;align-items:center;justify-content:center;flex-direction:column;gap:12px;background:rgba(0,0,0,.8)}.overlay.show{display:flex}.spinner{width:36px;height:36px;border:3px solid #333;border-top-color:#3b82f6;border-radius:50%;animation:spin .8s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}.hidden{display:none!important}
+</style>
 </head>
 <body>
 <div class="container">
-    <header class="header">
-        <div>
-            <h1>Claude Rate Limit</h1>
-            <div class="version">Version 1.2.0</div>
-        </div>
-        <button class="icon" onclick="toggleModal()">⚙️</button>
-    </header>
-
-    <div class="status">
-        <div id="dot" class="dot"></div>
-        <span id="statusText" class="status-text">ยังไม่ได้ตั้งค่า API Key</span>
-    </div>
-
-    <div id="limits" class="hidden">
-        <div class="card">
-            <div class="head"><span class="label">Requests / minute</span><span id="reqValue" class="value">-</span></div>
-            <div class="bar"><div id="reqBar" class="fill"></div></div>
-            <div id="reqReset" class="reset">-</div>
-        </div>
-        <div class="card">
-            <div class="head"><span class="label">Tokens / minute</span><span id="tokValue" class="value">-</span></div>
-            <div class="bar"><div id="tokBar" class="fill"></div></div>
-            <div id="tokReset" class="reset">-</div>
-        </div>
-    </div>
-
-    <button id="testBtn" class="btn" onclick="testApi()" disabled>ตรวจสอบ Rate Limit</button>
-    <div id="info" class="info">ตรวจสอบผ่าน Models API · ไม่เรียก Messages API และไม่ส่งข้อความให้ Claude</div>
-
-    <button class="btn secondary" onclick="location.reload()">↻ รีเฟรชข้อมูล</button>
-
-    <div id="modal" class="modal">
-        <div class="modal-box">
-            <div class="modal-head">
-                <h2>⚙️ Settings</h2>
-                <button class="close" onclick="toggleModal()">✕</button>
-            </div>
-            <label for="apiKey">Claude API Key</label>
-            <input id="apiKey" type="password" autocomplete="off" placeholder="sk-ant-api03-...">
-            <small>API Key จะถูกเก็บไว้ใน browser เครื่องนี้เท่านั้น · สำหรับเครื่องมือส่วนตัว</small>
-            <small>เครื่องมือนี้ใช้ GET /v1/models เพื่อตรวจสอบ Rate Limit โดยไม่เรียก Claude</small>
-            <small>รับ API Key จาก <a href="https://console.anthropic.com" target="_blank" rel="noopener">Claude Console</a></small>
-            <button class="btn" onclick="saveKey()" style="margin-top:16px">💾 บันทึก</button>
-            <button class="btn secondary" onclick="clearKey()">🗑️ ลบ API Key</button>
-        </div>
-    </div>
-
-    <div id="overlay" class="overlay">
-        <div class="spinner"></div>
-        <span style="font-size:13px;color:#aaa">กำลังตรวจสอบ...</span>
-    </div>
+<header class="header"><div><h1>Claude Rate Limit</h1><div class="version">Version 1.3.0</div></div><button class="icon" onclick="toggleModal()">⚙️</button></header>
+<div class="status"><div id="dot" class="dot"></div><span id="statusText" class="status-text">ยังไม่ได้ตั้งค่า Admin API Key</span></div>
+<div id="limits" class="hidden">
+<div class="card"><div class="head"><span class="label">Requests / minute</span><span id="reqValue" class="value">-</span></div><div id="reqLimit" class="reset">-</div></div>
+<div class="card"><div class="head"><span class="label">Input tokens / minute</span><span id="inputValue" class="value">-</span></div><div id="inputLimit" class="reset">-</div></div>
+<div class="card"><div class="head"><span class="label">Output tokens / minute</span><span id="outputValue" class="value">-</span></div><div id="outputLimit" class="reset">-</div></div>
 </div>
-
+<button id="testBtn" class="btn" onclick="testApi()" disabled>ตรวจสอบ Rate Limit</button>
+<div id="info" class="info">ใช้ Anthropic Rate Limits API โดยตรง · ไม่เรียก Messages API · ไม่ส่งข้อความให้ Claude</div>
+<div id="adminHint" class="info" style="display:block">ต้องใช้ Admin API Key ที่ขึ้นต้นด้วย <b>sk-ant-admin...</b></div>
+<div id="modal" class="modal"><div class="modal-box"><div class="modal-head"><h2>⚙️ Settings</h2><button class="close" onclick="toggleModal()">✕</button></div><label for="apiKey">Anthropic Admin API Key</label><input id="apiKey" type="password" autocomplete="off" placeholder="sk-ant-admin..."><small>คีย์นี้ใช้กับ Rate Limits API เท่านั้น และเก็บไว้ใน browser เครื่องนี้</small><small>Anthropic ระบุว่า Rate Limits API ต้องใช้ Admin API credentials</small><small>ดูเอกสาร: <a href="https://platform.claude.com/docs/en/manage-claude/rate-limits-api" target="_blank" rel="noopener">Rate Limits API</a></small><button class="btn" onclick="saveKey()" style="margin-top:16px">💾 บันทึก</button><button class="btn secondary" onclick="clearKey()">🗑️ ลบ API Key</button></div></div>
+<div id="overlay" class="overlay"><div class="spinner"></div><span style="font-size:13px;color:#aaa">กำลังตรวจสอบ...</span></div>
+</div>
 <script>
-const APP_VERSION = '1.2.0';
-const STORAGE_KEY = 'claude_rl_key';
-const API_URL = 'https://api.anthropic.com/v1/models';
-const API_VERSION = '2023-06-01';
-let apiKey = '';
-
-document.addEventListener('DOMContentLoaded', () => {
-    apiKey = localStorage.getItem(STORAGE_KEY) || '';
-    document.getElementById('apiKey').value = apiKey;
-    refreshUI();
-});
-
-function toggleModal() {
-    document.getElementById('modal').classList.toggle('show');
-}
-
-function setLoading(show) {
-    document.getElementById('overlay').classList.toggle('show', show);
-}
-
-function refreshUI() {
-    const dot = document.getElementById('dot');
-    const status = document.getElementById('statusText');
-    const btn = document.getElementById('testBtn');
-    dot.classList.toggle('ok', !!apiKey);
-    status.textContent = apiKey ? 'พร้อมตรวจสอบ' : 'ยังไม่ได้ตั้งค่า API Key';
-    btn.disabled = !apiKey;
-}
-
-function saveKey() {
-    const value = document.getElementById('apiKey').value.trim();
-    if (!value) return alert('กรุณาใส่ API Key');
-    apiKey = value;
-    localStorage.setItem(STORAGE_KEY, apiKey);
-    toggleModal();
-    refreshUI();
-}
-
-function clearKey() {
-    localStorage.removeItem(STORAGE_KEY);
-    apiKey = '';
-    document.getElementById('apiKey').value = '';
-    document.getElementById('limits').classList.add('hidden');
-    document.getElementById('info').style.display = 'none';
-    refreshUI();
-}
-
-async function readError(response) {
-    let data = null;
-    try { data = await response.json(); } catch (_) {}
-    const message = data?.error?.message || `HTTP ${response.status}`;
-    return message;
-}
-
-function formatReset(value) {
-    if (!value) return '-';
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return '-';
-    const seconds = Math.max(0, Math.ceil((date - Date.now()) / 1000));
-    if (seconds <= 0) return 'รีเซ็ตแล้ว';
-    if (seconds < 60) return `รีเซ็ตใน ${seconds} วินาที`;
-    return `รีเซ็ตใน ${Math.floor(seconds / 60)} นาที ${seconds % 60} วินาที`;
-}
-
-function setLimit(valueId, barId, resetId, limit, remaining, reset) {
-    const value = document.getElementById(valueId);
-    const bar = document.getElementById(barId);
-    const resetEl = document.getElementById(resetId);
-    if (!limit || !remaining) {
-        value.textContent = 'ไม่พบข้อมูล';
-        bar.style.width = '0%';
-        resetEl.textContent = reset ? formatReset(reset) : '-';
-        return;
-    }
-    const max = Number(limit);
-    const left = Number(remaining);
-    if (!Number.isFinite(max) || !Number.isFinite(left) || max <= 0) {
-        value.textContent = 'ไม่พบข้อมูล';
-        return;
-    }
-    const used = Math.max(0, max - left);
-    const percent = Math.min(100, (used / max) * 100);
-    value.textContent = `${used.toLocaleString()}/${max.toLocaleString()}`;
-    bar.style.width = `${percent}%`;
-    bar.classList.toggle('warn', percent > 80);
-    resetEl.textContent = formatReset(reset);
-}
-
-async function testApi() {
-    if (!apiKey) return toggleModal();
-    setLoading(true);
-    document.getElementById('info').style.display = 'none';
-    try {
-        // IMPORTANT: GET /v1/models does not send a prompt to Claude.
-        // This avoids consuming Messages API input/output tokens.
-        const response = await fetch(API_URL, {
-            method: 'GET',
-            headers: {
-                'x-api-key': apiKey,
-                'anthropic-version': API_VERSION,
-                'anthropic-dangerous-direct-browser-access': 'true'
-            }
-        });
-
-        if (!response.ok) {
-            throw new Error(await readError(response));
-        }
-
-        setLimit('reqValue', 'reqBar', 'reqReset',
-            response.headers.get('anthropic-ratelimit-requests-limit'),
-            response.headers.get('anthropic-ratelimit-requests-remaining'),
-            response.headers.get('anthropic-ratelimit-requests-reset'));
-
-        setLimit('tokValue', 'tokBar', 'tokReset',
-            response.headers.get('anthropic-ratelimit-tokens-limit'),
-            response.headers.get('anthropic-ratelimit-tokens-remaining'),
-            response.headers.get('anthropic-ratelimit-tokens-reset'));
-
-        document.getElementById('limits').classList.remove('hidden');
-        document.getElementById('dot').classList.add('ok');
-        document.getElementById('statusText').textContent = 'ตรวจสอบสำเร็จ';
-        document.getElementById('info').style.display = 'block';
-    } catch (error) {
-        console.error(error);
-        document.getElementById('dot').classList.remove('ok');
-        document.getElementById('statusText').textContent = 'ตรวจสอบไม่สำเร็จ';
-        alert('❌ ' + (error?.message || 'ตรวจสอบ Anthropic API ไม่สำเร็จ'));
-    } finally {
-        setLoading(false);
-    }
-}
-
-document.getElementById('modal').addEventListener('click', (event) => {
-    if (event.target.id === 'modal') toggleModal();
-});
+const APP_VERSION='1.3.0';
+const STORAGE_KEY='claude_rl_admin_key';
+const API_URL='https://api.anthropic.com/v1/organizations/rate_limits';
+const API_VERSION='2023-06-01';
+let apiKey='';
+document.addEventListener('DOMContentLoaded',()=>{apiKey=localStorage.getItem(STORAGE_KEY)||'';document.getElementById('apiKey').value=apiKey;refreshUI()});
+function toggleModal(){document.getElementById('modal').classList.toggle('show')}
+function setLoading(show){document.getElementById('overlay').classList.toggle('show',show)}
+function refreshUI(){const hasKey=!!apiKey;document.getElementById('dot').classList.toggle('ok',hasKey);document.getElementById('statusText').textContent=hasKey?'พร้อมตรวจสอบ':'ยังไม่ได้ตั้งค่า Admin API Key';document.getElementById('testBtn').disabled=!hasKey}
+function saveKey(){const value=document.getElementById('apiKey').value.trim();if(!value)return alert('กรุณาใส่ Admin API Key');apiKey=value;localStorage.setItem(STORAGE_KEY,apiKey);toggleModal();refreshUI()}
+function clearKey(){localStorage.removeItem(STORAGE_KEY);apiKey='';document.getElementById('apiKey').value='';document.getElementById('limits').classList.add('hidden');document.getElementById('info').style.display='none';refreshUI()}
+async function readError(response){let data=null;try{data=await response.json()}catch(_){}return data?.error?.message||`HTTP ${response.status}`}
+function findModelGroup(groups){return groups.find(g=>g.group_type==='model_group')||null}
+function getLimit(group,type){return group?.limits?.find(x=>x.type===type)?.value??null}
+function formatNumber(value){return value==null?'-':Number(value).toLocaleString()}
+async function testApi(){if(!apiKey)return toggleModal();setLoading(true);document.getElementById('info').style.display='none';try{const response=await fetch(API_URL+'?group_type=model_group',{method:'GET',headers:{'x-api-key':apiKey,'anthropic-version':API_VERSION}});if(!response.ok)throw new Error(await readError(response));const data=await response.json();const group=findModelGroup(data.data||[]);if(!group)throw new Error('ไม่พบ model_group ใน Rate Limits API');const rpm=getLimit(group,'requests_per_minute');const itpm=getLimit(group,'input_tokens_per_minute');const otpm=getLimit(group,'output_tokens_per_minute');document.getElementById('reqValue').textContent=formatNumber(rpm);document.getElementById('inputValue').textContent=formatNumber(itpm);document.getElementById('outputValue').textContent=formatNumber(otpm);document.getElementById('reqLimit').textContent='Organization configured limit';document.getElementById('inputLimit').textContent='Organization configured limit';document.getElementById('outputLimit').textContent='Organization configured limit';document.getElementById('limits').classList.remove('hidden');document.getElementById('dot').classList.add('ok');document.getElementById('statusText').textContent='ตรวจสอบสำเร็จ';document.getElementById('info').style.display='block'}catch(error){console.error(error);document.getElementById('dot').classList.remove('ok');document.getElementById('statusText').textContent='ตรวจสอบไม่สำเร็จ';alert('❌ '+(error?.message||'ตรวจสอบ Rate Limit ไม่สำเร็จ'))}finally{setLoading(false)}}
+document.getElementById('modal').addEventListener('click',event=>{if(event.target.id==='modal')toggleModal()});
 </script>
 </body>
 </html>
