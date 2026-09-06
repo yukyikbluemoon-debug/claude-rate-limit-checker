@@ -2,377 +2,228 @@
 <html lang="th">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#0f0f0f">
     <title>Claude Rate Limit</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #0f0f0f;
-            color: #fff;
-            min-height: 100vh;
-            padding: 16px;
-        }
-        .container { max-width: 500px; margin: 0 auto; }
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px 0 20px;
-        }
-        .header h1 { font-size: 18px; font-weight: 600; }
-        .icon-btn {
-            background: rgba(255,255,255,0.1);
-            border: none;
-            border-radius: 10px;
-            padding: 8px 12px;
-            font-size: 18px;
-            cursor: pointer;
-        }
-        .status-card {
-            background: rgba(255,255,255,0.05);
-            border-radius: 14px;
-            padding: 14px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 16px;
-        }
-        .status-dot {
-            width: 10px; height: 10px;
-            border-radius: 50%;
-            background: #ef4444;
-            flex-shrink: 0;
-        }
-        .status-dot.ok { background: #22c55e; box-shadow: 0 0 8px #22c55e; }
-        .status-text { font-size: 13px; color: rgba(255,255,255,0.7); }
-        .limit-card {
-            background: rgba(255,255,255,0.05);
-            border-radius: 14px;
-            padding: 16px;
-            margin-bottom: 12px;
-        }
-        .limit-head {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 10px;
-        }
-        .limit-label { font-size: 13px; color: rgba(255,255,255,0.6); }
-        .limit-val { font-size: 16px; font-weight: 600; }
-        .bar {
-            background: rgba(255,255,255,0.1);
-            border-radius: 6px;
-            height: 6px;
-            overflow: hidden;
-            margin-bottom: 8px;
-        }
-        .bar-fill {
-            height: 100%;
-            border-radius: 6px;
-            background: linear-gradient(90deg, #3b82f6, #8b5cf6);
-            transition: width 0.3s;
-        }
-        .bar-fill.warn { background: linear-gradient(90deg, #f59e0b, #ef4444); }
-        .reset-text { font-size: 11px; color: rgba(255,255,255,0.4); }
-        .btn {
-            width: 100%;
-            padding: 14px;
-            border: none;
-            border-radius: 12px;
-            font-size: 15px;
-            font-weight: 600;
-            cursor: pointer;
-            margin-bottom: 10px;
-        }
-        .btn:active { transform: scale(0.98); }
-        .btn-primary { background: linear-gradient(135deg, #3b82f6, #8b5cf6); color: #fff; }
-        .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
-        .btn-secondary { background: rgba(255,255,255,0.1); color: #fff; }
-        .info-box {
-            background: rgba(59,130,246,0.1);
-            border: 1px solid rgba(59,130,246,0.3);
-            border-radius: 12px;
-            padding: 14px;
-            margin-top: 16px;
-            font-size: 13px;
-            color: rgba(255,255,255,0.8);
-            text-align: center;
-            display: none;
-        }
-        .modal {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: rgba(0,0,0,0.85);
-            z-index: 1000;
-            align-items: flex-end;
-            justify-content: center;
-        }
-        .modal.show { display: flex; }
-        .modal-box {
-            background: #1a1a1a;
-            border-radius: 20px 20px 0 0;
-            width: 100%;
-            max-width: 500px;
-            padding: 20px;
-            animation: slideUp 0.25s ease;
-        }
-        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
-        .modal-head {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 16px;
-        }
-        .modal-head h2 { font-size: 18px; }
-        .close-btn {
-            background: rgba(255,255,255,0.1);
-            border: none;
-            border-radius: 8px;
-            width: 32px; height: 32px;
-            font-size: 16px;
-            color: #fff;
-            cursor: pointer;
-        }
-        .field { margin-bottom: 16px; }
-        .field label { display: block; font-size: 13px; color: rgba(255,255,255,0.7); margin-bottom: 6px; }
-        .field input {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 10px;
-            background: rgba(255,255,255,0.05);
-            color: #fff;
-            font-size: 14px;
-        }
-        .field input:focus { outline: none; border-color: #3b82f6; }
-        .field small { display: block; margin-top: 4px; font-size: 11px; color: rgba(255,255,255,0.4); }
-        .field a { color: #3b82f6; text-decoration: none; }
-        .overlay {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: rgba(0,0,0,0.8);
-            z-index: 2000;
-            align-items: center;
-            justify-content: center;
-            flex-direction: column;
-            gap: 12px;
-        }
-        .overlay.show { display: flex; }
-        .spinner {
-            width: 36px; height: 36px;
-            border: 3px solid rgba(255,255,255,0.1);
-            border-top-color: #3b82f6;
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-        }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        .hidden { display: none !important; }
+        * { box-sizing: border-box; }
+        body { margin: 0; min-height: 100vh; padding: 16px; background: #0f0f0f; color: #fff; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+        .container { width: 100%; max-width: 500px; margin: 0 auto; }
+        .header { display:flex; justify-content:space-between; align-items:center; padding:12px 0 20px; }
+        h1 { margin:0; font-size:18px; }
+        button { border:0; cursor:pointer; color:#fff; }
+        .icon { width:40px; height:40px; border-radius:10px; background:#222; font-size:18px; }
+        .status { display:flex; align-items:center; gap:10px; padding:14px; margin-bottom:16px; border-radius:14px; background:#191919; }
+        .dot { width:10px; height:10px; border-radius:50%; background:#ef4444; }
+        .dot.ok { background:#22c55e; box-shadow:0 0 8px #22c55e; }
+        .status-text { color:#bbb; font-size:13px; }
+        .btn { width:100%; padding:14px; margin-bottom:10px; border-radius:12px; font-size:15px; font-weight:600; background:linear-gradient(135deg,#3b82f6,#8b5cf6); }
+        .btn:disabled { opacity:.4; cursor:not-allowed; }
+        .secondary { background:#222; }
+        .card { padding:16px; margin-bottom:12px; border-radius:14px; background:#191919; }
+        .head { display:flex; justify-content:space-between; margin-bottom:10px; }
+        .label { color:#999; font-size:13px; }
+        .value { font-size:16px; font-weight:600; }
+        .bar { height:6px; margin-bottom:8px; overflow:hidden; border-radius:6px; background:#292929; }
+        .fill { width:0; height:100%; border-radius:6px; background:linear-gradient(90deg,#3b82f6,#8b5cf6); transition:width .3s; }
+        .fill.warn { background:linear-gradient(90deg,#f59e0b,#ef4444); }
+        .reset { color:#777; font-size:11px; }
+        .info { display:none; padding:14px; margin-top:16px; border:1px solid #244b80; border-radius:12px; background:#101d2d; color:#bbb; text-align:center; font-size:13px; }
+        .modal { display:none; position:fixed; inset:0; z-index:10; align-items:flex-end; justify-content:center; background:rgba(0,0,0,.85); }
+        .modal.show { display:flex; }
+        .modal-box { width:100%; max-width:500px; padding:20px; border-radius:20px 20px 0 0; background:#1a1a1a; }
+        .modal-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
+        .modal-head h2 { margin:0; font-size:18px; }
+        .close { width:32px; height:32px; border-radius:8px; background:#292929; }
+        label { display:block; margin-bottom:6px; color:#bbb; font-size:13px; }
+        input { width:100%; padding:12px; border:1px solid #333; border-radius:10px; outline:none; background:#111; color:#fff; font-size:14px; }
+        input:focus { border-color:#3b82f6; }
+        small { display:block; margin-top:5px; color:#777; font-size:11px; }
+        a { color:#60a5fa; }
+        .overlay { display:none; position:fixed; inset:0; z-index:20; align-items:center; justify-content:center; flex-direction:column; gap:12px; background:rgba(0,0,0,.8); }
+        .overlay.show { display:flex; }
+        .spinner { width:36px; height:36px; border:3px solid #333; border-top-color:#3b82f6; border-radius:50%; animation:spin .8s linear infinite; }
+        @keyframes spin { to { transform:rotate(360deg); } }
+        .hidden { display:none !important; }
     </style>
 </head>
 <body>
 <div class="container">
     <header class="header">
-        <h1> Claude Rate Limit</h1>
-        <button class="icon-btn" onclick="toggleModal()">⚙️</button>
+        <h1>Claude Rate Limit</h1>
+        <button class="icon" onclick="toggleModal()">⚙️</button>
     </header>
 
-    <div class="status-card">
-        <div class="status-dot" id="dot"></div>
-        <span class="status-text" id="statusText">ยังไม่ได้ตั้งค่า API Key</span>
+    <div class="status">
+        <div id="dot" class="dot"></div>
+        <span id="statusText" class="status-text">ยังไม่ได้ตั้งค่า API Key</span>
     </div>
 
-    <div id="limitsWrap" class="hidden">
-        <div class="limit-card">
-            <div class="limit-head">
-                <span class="limit-label">Requests</span>
-                <span class="limit-val" id="reqVal">0/0</span>
-            </div>
-            <div class="bar"><div class="bar-fill" id="reqBar"></div></div>
-            <div class="reset-text" id="reqReset">-</div>
+    <div id="limits" class="hidden">
+        <div class="card">
+            <div class="head"><span class="label">Requests / minute</span><span id="reqValue" class="value">-</span></div>
+            <div class="bar"><div id="reqBar" class="fill"></div></div>
+            <div id="reqReset" class="reset">-</div>
         </div>
-        <div class="limit-card">
-            <div class="limit-head">
-                <span class="limit-label">Tokens</span>
-                <span class="limit-val" id="tokVal">0/0</span>
-            </div>
-            <div class="bar"><div class="bar-fill" id="tokBar"></div></div>
-            <div class="reset-text" id="tokReset">-</div>
+        <div class="card">
+            <div class="head"><span class="label">Tokens / minute</span><span id="tokValue" class="value">-</span></div>
+            <div class="bar"><div id="tokBar" class="fill"></div></div>
+            <div id="tokReset" class="reset">-</div>
         </div>
     </div>
 
-    <button class="btn btn-primary" id="testBtn" onclick="testApi()" disabled>ทดสอบการเชื่อมต่อ</button>
-    <div class="info-box" id="infoBox">💡 กดปุ่มด้านบนเพื่อเช็ค rate limit ปัจจุบัน</div>
+    <button id="testBtn" class="btn" onclick="testApi()" disabled>ทดสอบการเชื่อมต่อ</button>
+    <div id="info" class="info">เชื่อมต่อกับ Anthropic API สำเร็จ</div>
 
-    <!-- Settings Modal -->
-    <div class="modal" id="modal">
+    <div id="modal" class="modal">
         <div class="modal-box">
             <div class="modal-head">
                 <h2>⚙️ Settings</h2>
-                <button class="close-btn" onclick="toggleModal()">✕</button>
+                <button class="close" onclick="toggleModal()">✕</button>
             </div>
-            <div class="field">
-                <label>Claude API Key</label>
-                <input type="password" id="apiKey" placeholder="sk-ant-api03-...">
-                <small>รับได้ที่ <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a></small>
-            </div>
-            <button class="btn btn-primary" onclick="saveKey()">💾 บันทึก</button>
-            <button class="btn btn-secondary" onclick="clearKey()">🗑️ ลบ API Key</button>
+            <label for="apiKey">Claude API Key</label>
+            <input id="apiKey" type="password" autocomplete="off" placeholder="sk-ant-api03-...">
+            <small>API Key จะถูกเก็บไว้ใน browser เครื่องนี้เท่านั้น · สำหรับเครื่องมือส่วนตัว</small>
+            <small>รับ API Key จาก <a href="https://console.anthropic.com" target="_blank" rel="noopener">Claude Console</a></small>
+            <button class="btn" onclick="saveKey()" style="margin-top:16px">💾 บันทึก</button>
+            <button class="btn secondary" onclick="clearKey()">🗑️ ลบ API Key</button>
         </div>
     </div>
 
-    <!-- Loading -->
-    <div class="overlay" id="overlay">
+    <div id="overlay" class="overlay">
         <div class="spinner"></div>
-        <span style="font-size:13px;color:rgba(255,255,255,0.7)">กำลังโหลด...</span>
+        <span style="font-size:13px;color:#aaa">กำลังตรวจสอบ...</span>
     </div>
 </div>
 
 <script>
-const KEY = 'claude_rl_key';
-const PROXIES = [
-    u => `https://corsproxy.io/?${encodeURIComponent(u)}`,
-    u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
-    u => `https://cors-anywhere.herokuapp.com/${u}`
-];
+const STORAGE_KEY = 'claude_rl_key';
+const API_URL = 'https://api.anthropic.com/v1/messages';
+const API_VERSION = '2023-06-01';
+const MODEL = 'claude-sonnet-4-6';
 let apiKey = '';
 
 document.addEventListener('DOMContentLoaded', () => {
-    const s = localStorage.getItem(KEY);
-    if (s) { apiKey = s; document.getElementById('apiKey').value = s; }
+    apiKey = localStorage.getItem(STORAGE_KEY) || '';
+    document.getElementById('apiKey').value = apiKey;
     refreshUI();
 });
 
-function toggleModal() { document.getElementById('modal').classList.toggle('show'); }
-function showLoad(v) { document.getElementById('overlay').classList.toggle('show', v); }
+function toggleModal() {
+    document.getElementById('modal').classList.toggle('show');
+}
+
+function setLoading(show) {
+    document.getElementById('overlay').classList.toggle('show', show);
+}
 
 function refreshUI() {
     const dot = document.getElementById('dot');
-    const txt = document.getElementById('statusText');
+    const status = document.getElementById('statusText');
     const btn = document.getElementById('testBtn');
-    if (apiKey) {
-        dot.classList.add('ok');
-        txt.textContent = 'พร้อมใช้งาน';
-        btn.disabled = false;
-    } else {
-        dot.classList.remove('ok');
-        txt.textContent = 'ยังไม่ได้ตั้งค่า API Key';
-        btn.disabled = true;
-    }
+    dot.classList.toggle('ok', !!apiKey);
+    status.textContent = apiKey ? 'พร้อมตรวจสอบ' : 'ยังไม่ได้ตั้งค่า API Key';
+    btn.disabled = !apiKey;
 }
 
 function saveKey() {
-    const v = document.getElementById('apiKey').value.trim();
-    if (!v) { alert('กรุณาใส่ API Key'); return; }
-    apiKey = v;
-    localStorage.setItem(KEY, v);
+    const value = document.getElementById('apiKey').value.trim();
+    if (!value) return alert('กรุณาใส่ API Key');
+    apiKey = value;
+    localStorage.setItem(STORAGE_KEY, apiKey);
     toggleModal();
     refreshUI();
-    alert('✅ บันทึกแล้ว');
 }
 
 function clearKey() {
-    if (!confirm('ลบ API Key?')) return;
-    localStorage.removeItem(KEY);
+    localStorage.removeItem(STORAGE_KEY);
     apiKey = '';
     document.getElementById('apiKey').value = '';
-    document.getElementById('limitsWrap').classList.add('hidden');
-    document.getElementById('infoBox').style.display = 'none';
+    document.getElementById('limits').classList.add('hidden');
+    document.getElementById('info').style.display = 'none';
     refreshUI();
 }
 
-async function tryFetch(url, opts) {
-    for (const proxy of PROXIES) {
-        try {
-            const r = await fetch(proxy(url), opts);
-            if (r.ok || r.status === 429) return r;
-        } catch(e) { continue; }
-    }
-    throw new Error('ทุก proxy ล้มเหลว ลองใหม่หรือเปลี่ยน network');
+async function readError(response) {
+    let data = null;
+    try { data = await response.json(); } catch (_) {}
+    const message = data?.error?.message || `HTTP ${response.status}`;
+    return message;
+}
+
+function formatReset(value) {
+    if (!value) return '-';
+    const date = new Date(value);
+    const seconds = Math.max(0, Math.ceil((date - Date.now()) / 1000));
+    if (seconds <= 0) return 'รีเซ็ตแล้ว';
+    if (seconds < 60) return `รีเซ็ตใน ${seconds} วินาที`;
+    return `รีเซ็ตใน ${Math.floor(seconds / 60)} นาที ${seconds % 60} วินาที`;
+}
+
+function setLimit(valueId, barId, resetId, limit, remaining, reset) {
+    if (!limit || !remaining) return;
+    const max = Number(limit);
+    const left = Number(remaining);
+    if (!Number.isFinite(max) || !Number.isFinite(left) || max <= 0) return;
+    const used = Math.max(0, max - left);
+    const percent = Math.min(100, (used / max) * 100);
+    document.getElementById(valueId).textContent = `${used.toLocaleString()}/${max.toLocaleString()}`;
+    const bar = document.getElementById(barId);
+    bar.style.width = `${percent}%`;
+    bar.classList.toggle('warn', percent > 80);
+    document.getElementById(resetId).textContent = formatReset(reset);
 }
 
 async function testApi() {
-    if (!apiKey) { toggleModal(); return; }
-    showLoad(true);
+    if (!apiKey) return toggleModal();
+    setLoading(true);
+    document.getElementById('info').style.display = 'none';
     try {
-        const r = await tryFetch('https://api.anthropic.com/v1/messages', {
+        const response = await fetch(API_URL, {
             method: 'POST',
             headers: {
                 'x-api-key': apiKey,
-                'anthropic-version': '2023-06-01',
+                'anthropic-version': API_VERSION,
+                'anthropic-dangerous-direct-browser-access': 'true',
                 'content-type': 'application/json'
             },
             body: JSON.stringify({
-                model: 'claude-3-5-sonnet-20241022',
+                model: MODEL,
                 max_tokens: 1,
-                messages: [{ role: 'user', content: 'Hi' }]
+                messages: [{ role: 'user', content: 'ping' }]
             })
         });
 
-        if (r.status === 401) throw new Error('API Key ไม่ถูกต้อง');
-        if (r.status === 403) throw new Error('ไม่มีสิทธิ์เข้าถึง API');
+        if (!response.ok) {
+            throw new Error(await readError(response));
+        }
 
-        const h = {
-            reqLimit: r.headers.get('anthropic-ratelimit-requests-limit'),
-            reqRemain: r.headers.get('anthropic-ratelimit-requests-remaining'),
-            reqReset: r.headers.get('anthropic-ratelimit-requests-reset'),
-            tokLimit: r.headers.get('anthropic-ratelimit-tokens-limit'),
-            tokRemain: r.headers.get('anthropic-ratelimit-tokens-remaining'),
-            tokReset: r.headers.get('anthropic-ratelimit-tokens-reset')
-        };
+        setLimit('reqValue', 'reqBar', 'reqReset',
+            response.headers.get('anthropic-ratelimit-requests-limit'),
+            response.headers.get('anthropic-ratelimit-requests-remaining'),
+            response.headers.get('anthropic-ratelimit-requests-reset'));
 
-        showLimits(h);
-        document.getElementById('statusText').textContent = '✅ เชื่อมต่อสำเร็จ';
-        document.getElementById('infoBox').style.display = 'block';
-    } catch(e) {
-        alert('❌ ' + e.message);
+        setLimit('tokValue', 'tokBar', 'tokReset',
+            response.headers.get('anthropic-ratelimit-tokens-limit'),
+            response.headers.get('anthropic-ratelimit-tokens-remaining'),
+            response.headers.get('anthropic-ratelimit-tokens-reset'));
+
+        document.getElementById('limits').classList.remove('hidden');
+        document.getElementById('dot').classList.add('ok');
+        document.getElementById('statusText').textContent = 'เชื่อมต่อสำเร็จ';
+        document.getElementById('info').style.display = 'block';
+    } catch (error) {
+        console.error(error);
+        document.getElementById('dot').classList.remove('ok');
+        document.getElementById('statusText').textContent = 'เชื่อมต่อไม่สำเร็จ';
+        alert('❌ ' + (error?.message || 'เชื่อมต่อ Anthropic API ไม่สำเร็จ'));
     } finally {
-        showLoad(false);
+        setLoading(false);
     }
 }
 
-function showLimits(h) {
-    document.getElementById('limitsWrap').classList.remove('hidden');
-
-    if (h.reqLimit && h.reqRemain) {
-        const lim = +h.reqLimit, rem = +h.reqRemain, used = lim - rem;
-        const pct = Math.min((used/lim)*100, 100);
-        document.getElementById('reqVal').textContent = `${used}/${lim}`;
-        const bar = document.getElementById('reqBar');
-        bar.style.width = pct + '%';
-        bar.classList.toggle('warn', pct > 80);
-        document.getElementById('reqReset').textContent = h.reqReset ? `รีเซ็ต: ${fmtTime(h.reqReset)}` : '-';
-    }
-
-    if (h.tokLimit && h.tokRemain) {
-        const lim = +h.tokLimit, rem = +h.tokRemain, used = lim - rem;
-        const pct = Math.min((used/lim)*100, 100);
-        document.getElementById('tokVal').textContent = `${fmtNum(used)}/${fmtNum(lim)}`;
-        const bar = document.getElementById('tokBar');
-        bar.style.width = pct + '%';
-        bar.classList.toggle('warn', pct > 80);
-        document.getElementById('tokReset').textContent = h.tokReset ? `รีเซ็ต: ${fmtTime(h.tokReset)}` : '-';
-    }
-}
-
-function fmtTime(t) {
-    const d = new Date(t), now = new Date(), diff = d - now;
-    if (diff <= 0) return 'ตอนนี้';
-    const m = Math.floor(diff/60000), s = Math.floor((diff%60000)/1000);
-    return m > 0 ? `${m}นาที ${s}วิ` : `${s}วินาที`;
-}
-
-function fmtNum(n) {
-    if (n >= 1e6) return (n/1e6).toFixed(1)+'M';
-    if (n >= 1e3) return (n/1e3).toFixed(1)+'K';
-    return n.toLocaleString();
-}
-
-document.getElementById('modal').addEventListener('click', e => {
-    if (e.target.id === 'modal') toggleModal();
+document.getElementById('modal').addEventListener('click', (event) => {
+    if (event.target.id === 'modal') toggleModal();
 });
 </script>
 </body>
