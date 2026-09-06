@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Claude Rate Limit Checker</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1>Claude Rate Limit</h1>
+            <button class="icon-btn" onclick="toggleSettings()">⚙️</button>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- API Key Status -->
+            <div class="status-card" id="apiStatus">
+                <div class="status-indicator" id="statusIndicator"></div>
+                <span id="statusText">ไม่ได้เชื่อมต่อ</span>
+            </div>
+
+            <!-- Rate Limit Cards -->
+            <div class="limits-container" id="limitsContainer" style="display: none;">
+                <div class="limit-card">
+                    <div class="limit-header">
+                        <span class="limit-label">Requests</span>
+                        <span class="limit-value" id="requestsValue">0/0</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="requestsProgress"></div>
+                    </div>
+                    <div class="reset-time" id="requestsReset">-</div>
+                </div>
+
+                <div class="limit-card">
+                    <div class="limit-header">
+                        <span class="limit-label">Tokens</span>
+                        <span class="limit-value" id="tokensValue">0/0</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="tokensProgress"></div>
+                    </div>
+                    <div class="reset-time" id="tokensReset">-</div>
+                </div>
+            </div>
+
+            <!-- Test Button -->
+            <button class="primary-btn" id="testBtn" onclick="testConnection()" disabled>
+                ทดสอบการเชื่อมต่อ
+            </button>
+
+            <!-- Usage Info -->
+            <div class="info-box" id="infoBox" style="display: none;">
+                <p>💡 ทดสอบ API เพื่อดู rate limit ของคุณ</p>
+            </div>
+        </main>
+
+        <!-- Settings Modal -->
+        <div class="modal" id="settingsModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Settings</h2>
+                    <button class="close-btn" onclick="toggleSettings()">✕</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="apiKey">Claude API Key</label>
+                        <input type="password" id="apiKey" placeholder="sk-ant-api03-...">
+                    </div>
+                    <div class="form-group">
+                        <label for="apiVersion">API Version</label>
+                        <input type="text" id="apiVersion" value="2023-06-01" placeholder="2023-06-01">
+                    </div>
+                    <button class="primary-btn" onclick="saveSettings()">บันทึก</button>
+                    <button class="secondary-btn" onclick="clearSettings()">ลบ API Key</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading Overlay -->
+        <div class="loading-overlay" id="loadingOverlay" style="display: none;">
+            <div class="spinner"></div>
+            <p>กำลังโหลด...</p>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
