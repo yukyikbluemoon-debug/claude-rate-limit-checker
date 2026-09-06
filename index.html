@@ -53,7 +53,7 @@
     <header class="header">
         <div>
             <h1>Claude Rate Limit</h1>
-            <div class="version">Version 1.1.0</div>
+            <div class="version">Version 1.2.0</div>
         </div>
         <button class="icon" onclick="toggleModal()">⚙️</button>
     </header>
@@ -76,8 +76,10 @@
         </div>
     </div>
 
-    <button id="testBtn" class="btn" onclick="testApi()" disabled>ทดสอบการเชื่อมต่อ</button>
-    <div id="info" class="info">เชื่อมต่อกับ Anthropic API สำเร็จ</div>
+    <button id="testBtn" class="btn" onclick="testApi()" disabled>ตรวจสอบ Rate Limit</button>
+    <div id="info" class="info">ตรวจสอบผ่าน Models API · ไม่เรียก Messages API และไม่ส่งข้อความให้ Claude</div>
+
+    <button class="btn secondary" onclick="location.reload()">↻ รีเฟรชข้อมูล</button>
 
     <div id="modal" class="modal">
         <div class="modal-box">
@@ -88,6 +90,7 @@
             <label for="apiKey">Claude API Key</label>
             <input id="apiKey" type="password" autocomplete="off" placeholder="sk-ant-api03-...">
             <small>API Key จะถูกเก็บไว้ใน browser เครื่องนี้เท่านั้น · สำหรับเครื่องมือส่วนตัว</small>
+            <small>เครื่องมือนี้ใช้ GET /v1/models เพื่อตรวจสอบ Rate Limit โดยไม่เรียก Claude</small>
             <small>รับ API Key จาก <a href="https://console.anthropic.com" target="_blank" rel="noopener">Claude Console</a></small>
             <button class="btn" onclick="saveKey()" style="margin-top:16px">💾 บันทึก</button>
             <button class="btn secondary" onclick="clearKey()">🗑️ ลบ API Key</button>
@@ -101,11 +104,10 @@
 </div>
 
 <script>
-const APP_VERSION = '1.1.0';
+const APP_VERSION = '1.2.0';
 const STORAGE_KEY = 'claude_rl_key';
-const API_URL = 'https://api.anthropic.com/v1/messages';
+const API_URL = 'https://api.anthropic.com/v1/models';
 const API_VERSION = '2023-06-01';
-const MODEL = 'claude-sonnet-4-6';
 let apiKey = '';
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -159,6 +161,7 @@ async function readError(response) {
 function formatReset(value) {
     if (!value) return '-';
     const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '-';
     const seconds = Math.max(0, Math.ceil((date - Date.now()) / 1000));
     if (seconds <= 0) return 'รีเซ็ตแล้ว';
     if (seconds < 60) return `รีเซ็ตใน ${seconds} วินาที`;
@@ -166,17 +169,27 @@ function formatReset(value) {
 }
 
 function setLimit(valueId, barId, resetId, limit, remaining, reset) {
-    if (!limit || !remaining) return;
+    const value = document.getElementById(valueId);
+    const bar = document.getElementById(barId);
+    const resetEl = document.getElementById(resetId);
+    if (!limit || !remaining) {
+        value.textContent = 'ไม่พบข้อมูล';
+        bar.style.width = '0%';
+        resetEl.textContent = reset ? formatReset(reset) : '-';
+        return;
+    }
     const max = Number(limit);
     const left = Number(remaining);
-    if (!Number.isFinite(max) || !Number.isFinite(left) || max <= 0) return;
+    if (!Number.isFinite(max) || !Number.isFinite(left) || max <= 0) {
+        value.textContent = 'ไม่พบข้อมูล';
+        return;
+    }
     const used = Math.max(0, max - left);
     const percent = Math.min(100, (used / max) * 100);
-    document.getElementById(valueId).textContent = `${used.toLocaleString()}/${max.toLocaleString()}`;
-    const bar = document.getElementById(barId);
+    value.textContent = `${used.toLocaleString()}/${max.toLocaleString()}`;
     bar.style.width = `${percent}%`;
     bar.classList.toggle('warn', percent > 80);
-    document.getElementById(resetId).textContent = formatReset(reset);
+    resetEl.textContent = formatReset(reset);
 }
 
 async function testApi() {
@@ -184,19 +197,15 @@ async function testApi() {
     setLoading(true);
     document.getElementById('info').style.display = 'none';
     try {
+        // IMPORTANT: GET /v1/models does not send a prompt to Claude.
+        // This avoids consuming Messages API input/output tokens.
         const response = await fetch(API_URL, {
-            method: 'POST',
+            method: 'GET',
             headers: {
                 'x-api-key': apiKey,
                 'anthropic-version': API_VERSION,
-                'anthropic-dangerous-direct-browser-access': 'true',
-                'content-type': 'application/json'
-            },
-            body: JSON.stringify({
-                model: MODEL,
-                max_tokens: 1,
-                messages: [{ role: 'user', content: 'ping' }]
-            })
+                'anthropic-dangerous-direct-browser-access': 'true'
+            }
         });
 
         if (!response.ok) {
@@ -215,13 +224,13 @@ async function testApi() {
 
         document.getElementById('limits').classList.remove('hidden');
         document.getElementById('dot').classList.add('ok');
-        document.getElementById('statusText').textContent = 'เชื่อมต่อสำเร็จ';
+        document.getElementById('statusText').textContent = 'ตรวจสอบสำเร็จ';
         document.getElementById('info').style.display = 'block';
     } catch (error) {
         console.error(error);
         document.getElementById('dot').classList.remove('ok');
-        document.getElementById('statusText').textContent = 'เชื่อมต่อไม่สำเร็จ';
-        alert('❌ ' + (error?.message || 'เชื่อมต่อ Anthropic API ไม่สำเร็จ'));
+        document.getElementById('statusText').textContent = 'ตรวจสอบไม่สำเร็จ';
+        alert('❌ ' + (error?.message || 'ตรวจสอบ Anthropic API ไม่สำเร็จ'));
     } finally {
         setLoading(false);
     }
