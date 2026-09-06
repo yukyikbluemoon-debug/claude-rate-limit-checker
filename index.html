@@ -11,6 +11,7 @@
         .container { width: 100%; max-width: 500px; margin: 0 auto; }
         .header { display:flex; justify-content:space-between; align-items:center; padding:12px 0 20px; }
         h1 { margin:0; font-size:18px; }
+        .version { margin-top:4px; color:#777; font-size:11px; }
         button { border:0; cursor:pointer; color:#fff; }
         .icon { width:40px; height:40px; border-radius:10px; background:#222; font-size:18px; }
         .status { display:flex; align-items:center; gap:10px; padding:14px; margin-bottom:16px; border-radius:14px; background:#191919; }
@@ -50,7 +51,10 @@
 <body>
 <div class="container">
     <header class="header">
-        <h1>Claude Rate Limit</h1>
+        <div>
+            <h1>Claude Rate Limit</h1>
+            <div class="version">Version 1.1.0</div>
+        </div>
         <button class="icon" onclick="toggleModal()">⚙️</button>
     </header>
 
@@ -97,6 +101,7 @@
 </div>
 
 <script>
+const APP_VERSION = '1.1.0';
 const STORAGE_KEY = 'claude_rl_key';
 const API_URL = 'https://api.anthropic.com/v1/messages';
 const API_VERSION = '2023-06-01';
