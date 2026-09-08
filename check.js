@@ -1,7 +1,7 @@
 /**
  * Claude Rate Limit Checker
  * ─────────────────────────────────────────────────────────────
- *  1) Claude API  → ส่ง request จริง → อ่าน x-ratelimit-* headers
+ *  1) Claude API  → GET /v1/models → อ่าน x-ratelimit-* headers (ไม่เสีย token)
  *  2) Claude.ai   → เรียก /api/oauth/usage (undocumented endpoint)
  *  3) ส่งรายงาน  → Telegram Bot
  *
@@ -20,8 +20,6 @@ const CFG = {
   telegramChatId: process.env.TELEGRAM_CHAT_ID    || "",
   anthropicKey  : process.env.ANTHROPIC_API_KEY   || "",
   oauthToken    : process.env.CLAUDE_OAUTH_TOKEN  || "",
-  // model ที่ใช้ probe (ถูกสุด — ใช้ token น้อยมาก)
-  probeModel    : process.env.PROBE_MODEL || "claude-haiku-4-5-20251001",
 };
 
 // ══════════════════════════════════════════════════════════════
@@ -80,33 +78,23 @@ function usedPct(remaining, limit) {
 }
 
 // ══════════════════════════════════════════════════════════════
-// 1) Claude API — probe request → อ่าน rate-limit headers
+// 1) Claude API — GET /v1/models → อ่าน rate-limit headers
+//    ✅ ไม่เสีย token เลย — แค่ list models
 // ══════════════════════════════════════════════════════════════
 async function checkApi() {
   if (!CFG.anthropicKey) return null;
 
-  const body = JSON.stringify({
-    model: CFG.probeModel,
-    max_tokens: 1,
-    messages: [{ role: "user", content: "hi" }],
-  });
-
   let res;
   try {
-    res = await req(
-      {
-        hostname: "api.anthropic.com",
-        path: "/v1/messages",
-        method: "POST",
-        headers: {
-          "x-api-key": CFG.anthropicKey,
-          "anthropic-version": "2023-06-01",
-          "content-type": "application/json",
-          "content-length": Buffer.byteLength(body),
-        },
+    res = await req({
+      hostname: "api.anthropic.com",
+      path: "/v1/models",
+      method: "GET",
+      headers: {
+        "x-api-key": CFG.anthropicKey,
+        "anthropic-version": "2023-06-01",
       },
-      body
-    );
+    });
   } catch (e) {
     return { error: `network: ${e.message}` };
   }
