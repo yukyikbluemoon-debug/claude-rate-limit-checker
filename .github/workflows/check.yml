@@ -1,0 +1,36 @@
+name: Claude Rate Limit Checker
+
+on:
+  schedule:
+    # ─── ปรับได้ตามต้องการ ───────────────────────────────────────
+    # "*/30 * * * *"  → ทุก 30 นาที
+    # "*/15 * * * *"  → ทุก 15 นาที   (GitHub minimum = 5 นาที)
+    # "0 * * * *"     → ทุกชั่วโมง
+    # "0 */2 * * *"   → ทุก 2 ชั่วโมง
+    # ─────────────────────────────────────────────────────────────
+    - cron: "*/5 * * * *"
+
+  # รันด้วยมือได้จาก Actions tab
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      # check.js ใช้เฉพาะ built-in modules — ไม่ต้อง npm install
+      - name: Run checker
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID:   ${{ secrets.TELEGRAM_CHAT_ID }}
+          ANTHROPIC_API_KEY:  ${{ secrets.ANTHROPIC_API_KEY }}
+          CLAUDE_OAUTH_TOKEN: ${{ secrets.CLAUDE_OAUTH_TOKEN }}
+        run: node check.js
