@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Claude Rate Limit Checker</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --border: #30363d;
+    --text: #e6edf3;
+    --muted: #7d8590;
+    --green: #3fb950;
+    --yellow: #d29922;
+    --red: #f85149;
+    --blue: #58a6ff;
+    --accent: #7c3aed;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    min-height: 100vh;
+    padding: 24px 16px;
+  }
+
+  .container { max-width: 560px; margin: 0 auto; }
+
+  h1 {
+    font-size: 1.3rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+
+  /* ── Settings card ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+
+  .card-title {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    margin-bottom: 14px;
+  }
+
+  label {
+    display: block;
+    font-size: 0.82rem;
+    color: var(--muted);
+    margin-bottom: 4px;
+    margin-top: 12px;
+  }
+  label:first-of-type { margin-top: 0; }
+
+  input[type="text"], input[type="password"] {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 0.88rem;
+    padding: 9px 12px;
+    outline: none;
+    transition: border-color .15s;
+    font-family: 'Courier New', monospace;
+  }
+  input:focus { border-color: var(--blue); }
+
+  .row {
+    display: flex;
+    gap: 10px;
+    margin-top: 16px;
+  }
+
+  button {
+    flex: 1;
+    padding: 11px;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity .15s, transform .1s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+  button:active { transform: scale(.97); }
+  button:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+
+  #btn-check {
+    background: var(--accent);
+    color: #fff;
+  }
+  #btn-send {
+    background: #229ed9;   /* Telegram blue */
+    color: #fff;
+  }
+
+  /* ── Result card ── */
+  #result { display: none; }
+
+  .section-title {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    margin-bottom: 12px;
+  }
+
+  .metric {
+    margin-bottom: 14px;
+  }
+  .metric:last-child { margin-bottom: 0; }
+
+  .metric-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 5px;
+    font-size: 0.85rem;
+    font-weight: 600;
+  }
+
+  .metric-sub {
+    font-size: 0.77rem;
+    color: var(--muted);
+    margin-top: 3px;
+  }
+
+  .bar-wrap {
+    background: var(--border);
+    border-radius: 999px;
+    height: 7px;
+    overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%;
+    border-radius: 999px;
+    transition: width .5s ease;
+  }
+
+  .green  { color: var(--green); }
+  .yellow { color: var(--yellow); }
+  .red    { color: var(--red); }
+  .bg-green  { background: var(--green); }
+  .bg-yellow { background: var(--yellow); }
+  .bg-red    { background: var(--red); }
+
+  .http-badge {
+    display: inline-block;
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 6px;
+    background: var(--green);
+    color: #000;
+    margin-bottom: 12px;
+  }
+  .http-badge.err { background: var(--red); color: #fff; }
+
+  .divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 16px 0;
+  }
+
+  .error-box {
+    background: #2d1515;
+    border: 1px solid var(--red);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 0.84rem;
+    color: var(--red);
+  }
+
+  .status-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.82rem;
+    color: var(--muted);
+    margin-top: 10px;
+    min-height: 20px;
+  }
+
+  .spinner {
+    width: 14px; height: 14px;
+    border: 2px solid var(--border);
+    border-top-color: var(--blue);
+    border-radius: 50%;
+    animation: spin .7s linear infinite;
+    display: none;
+  }
+  .spinner.active { display: inline-block; }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .timestamp {
+    font-size: 0.75rem;
+    color: var(--muted);
+    text-align: right;
+    margin-top: -6px;
+    margin-bottom: 12px;
+  }
+
+  .no-data {
+    font-size: 0.84rem;
+    color: var(--muted);
+    font-style: italic;
+  }
+
+  .save-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 14px;
+    font-size: 0.8rem;
+    color: var(--muted);
+  }
+  .save-row input[type=checkbox] { cursor: pointer; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <h1>🤖 Claude Rate Limit</h1>
+
+  <!-- ── Settings ── -->
+  <div class="card">
+    <div class="card-title">⚙️ ตั้งค่า</div>
+
+    <label>Anthropic API Key</label>
+    <input type="password" id="api-key" placeholder="sk-ant-..." autocomplete="off">
+
+    <label>Telegram Bot Token</label>
+    <input type="password" id="tg-token" placeholder="123456:ABC..." autocomplete="off">
+
+    <label>Telegram Chat ID</label>
+    <input type="text" id="tg-chat" placeholder="-100xxxxxxxxx หรือ @username">
+
+    <div class="save-row">
+      <input type="checkbox" id="chk-save" checked>
+      <label for="chk-save" style="margin:0;color:var(--muted);">จำค่าไว้ใน localStorage</label>
+    </div>
+
+    <div class="row">
+      <button id="btn-check" onclick="runCheck()">🔍 เช็ค</button>
+      <button id="btn-send" onclick="sendTelegram()" disabled>✈️ ส่ง Telegram</button>
+    </div>
+
+    <div class="status-row">
+      <div class="spinner" id="spinner"></div>
+      <span id="status-text"></span>
+    </div>
+  </div>
+
+  <!-- ── Result ── -->
+  <div class="card" id="result">
+    <div class="card-title">📊 ผลการเช็ค</div>
+    <div id="result-body"></div>
+  </div>
+
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+// Persist settings
+// ══════════════════════════════════════════════════════════════
+const KEYS = { apiKey:'rlc_api', tgToken:'rlc_tg_token', tgChat:'rlc_tg_chat' };
+
+function loadSaved() {
+  document.getElementById('api-key').value  = localStorage.getItem(KEYS.apiKey)   || '';
+  document.getElementById('tg-token').value = localStorage.getItem(KEYS.tgToken)  || '';
+  document.getElementById('tg-chat').value  = localStorage.getItem(KEYS.tgChat)   || '';
+}
+
+function maybeSave() {
+  if (!document.getElementById('chk-save').checked) return;
+  localStorage.setItem(KEYS.apiKey,  document.getElementById('api-key').value.trim());
+  localStorage.setItem(KEYS.tgToken, document.getElementById('tg-token').value.trim());
+  localStorage.setItem(KEYS.tgChat,  document.getElementById('tg-chat').value.trim());
+}
+
+loadSaved();
+
+// ══════════════════════════════════════════════════════════════
+// Helpers
+// ══════════════════════════════════════════════════════════════
+function thaiTime(iso) {
+  if (!iso || iso === '?') return '?';
+  try {
+    return new Date(iso).toLocaleString('th-TH', {
+      timeZone: 'Asia/Bangkok', hour12: false,
+      day:'2-digit', month:'2-digit', year:'numeric',
+      hour:'2-digit', minute:'2-digit'
+    });
+  } catch { return iso; }
+}
+
+function usedPct(remaining, limit) {
+  const r = Number(remaining), l = Number(limit);
+  if (!l || isNaN(r) || isNaN(l)) return null;
+  return Math.round(((l - r) / l) * 100);
+}
+
+function colorClass(pct) {
+  if (pct >= 80) return 'red';
+  if (pct >= 50) return 'yellow';
+  return 'green';
+}
+
+function barClass(pct) {
+  if (pct >= 80) return 'bg-red';
+  if (pct >= 50) return 'bg-yellow';
+  return 'bg-green';
+}
+
+function emojiFor(pct) {
+  if (pct >= 80) return '🔴';
+  if (pct >= 50) return '🟡';
+  return '🟢';
+}
+
+function metricHTML(label, pct, sub) {
+  if (pct === null) return '';
+  const cc = colorClass(pct), bc = barClass(pct), em = emojiFor(pct);
+  return `
+    <div class="metric">
+      <div class="metric-header">
+        <span>${em} ${label}</span>
+        <span class="${cc}">${pct}%</span>
+      </div>
+      <div class="bar-wrap">
+        <div class="bar-fill ${bc}" style="width:${pct}%"></div>
+      </div>
+      ${sub ? `<div class="metric-sub">${sub}</div>` : ''}
+    </div>`;
+}
+
+function setStatus(text, spinning = false) {
+  document.getElementById('status-text').textContent = text;
+  document.getElementById('spinner').classList.toggle('active', spinning);
+}
+
+// ══════════════════════════════════════════════════════════════
+// API call — ต้องผ่าน CORS proxy เพราะ browser ถูกบล็อก
+// ใช้ allorigins.win เป็น proxy
+// ══════════════════════════════════════════════════════════════
+async function callAnthropicViaProxy(path, apiKey) {
+  const target = `https://api.anthropic.com${path}`;
+  const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(target)}`;
+
+  // allorigins ไม่รองรับ custom headers — ใช้ Cloudflare Workers proxy แทน
+  // fallback: ลองเรียกตรงก่อน (ถ้า browser รองรับ)
+  try {
+    const res = await fetch(`https://api.anthropic.com${path}`, {
+      headers: {
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+      }
+    });
+    // อ่าน rate-limit headers
+    return {
+      status: res.status,
+      headers: {
+        rpmLimit    : res.headers.get('x-ratelimit-limit-requests'),
+        rpmRemaining: res.headers.get('x-ratelimit-remaining-requests'),
+        rpmReset    : res.headers.get('x-ratelimit-reset-requests'),
+        tpmLimit    : res.headers.get('x-ratelimit-limit-tokens'),
+        tpmRemaining: res.headers.get('x-ratelimit-remaining-tokens'),
+        tpmReset    : res.headers.get('x-ratelimit-reset-tokens'),
+        itpmLimit    : res.headers.get('x-ratelimit-limit-input-tokens'),
+        itpmRemaining: res.headers.get('x-ratelimit-remaining-input-tokens'),
+        otpmLimit    : res.headers.get('x-ratelimit-limit-output-tokens'),
+        otpmRemaining: res.headers.get('x-ratelimit-remaining-output-tokens'),
+        retryAfter  : res.headers.get('retry-after'),
+      }
+    };
+  } catch(e) {
+    return { error: 'CORS blocked — ดูหมายเหตุด้านล่าง' };
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// State
+// ══════════════════════════════════════════════════════════════
+let lastReport = null;   // เก็บข้อความสำหรับส่ง Telegram
+
+// ══════════════════════════════════════════════════════════════
+// Run check
+// ══════════════════════════════════════════════════════════════
+async function runCheck() {
+  const apiKey  = document.getElementById('api-key').value.trim();
+  const tgToken = document.getElementById('tg-token').value.trim();
+  const tgChat  = document.getElementById('tg-chat').value.trim();
+
+  if (!apiKey) { setStatus('❌ กรุณาใส่ API Key'); return; }
+
+  maybeSave();
+  document.getElementById('btn-check').disabled = true;
+  document.getElementById('btn-send').disabled  = true;
+  setStatus('กำลังเช็ค...', true);
+
+  let apiData = null;
+  let corsBlocked = false;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/models', {
+      headers: {
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+      }
+    });
+
+    apiData = {
+      httpStatus  : res.status,
+      rpmLimit    : res.headers.get('x-ratelimit-limit-requests'),
+      rpmRemaining: res.headers.get('x-ratelimit-remaining-requests'),
+      rpmReset    : res.headers.get('x-ratelimit-reset-requests'),
+      tpmLimit    : res.headers.get('x-ratelimit-limit-tokens'),
+      tpmRemaining: res.headers.get('x-ratelimit-remaining-tokens'),
+      tpmReset    : res.headers.get('x-ratelimit-reset-tokens'),
+      itpmLimit    : res.headers.get('x-ratelimit-limit-input-tokens'),
+      itpmRemaining: res.headers.get('x-ratelimit-remaining-input-tokens'),
+      otpmLimit    : res.headers.get('x-ratelimit-limit-output-tokens'),
+      otpmRemaining: res.headers.get('x-ratelimit-remaining-output-tokens'),
+      retryAfter  : res.headers.get('retry-after'),
+    };
+  } catch(e) {
+    corsBlocked = true;
+    apiData = { error: 'CORS' };
+  }
+
+  renderResult(apiData, corsBlocked);
+  buildTelegramMsg(apiData, corsBlocked);
+
+  document.getElementById('btn-check').disabled = false;
+  if (tgToken && tgChat) {
+    document.getElementById('btn-send').disabled = false;
+  }
+  setStatus(corsBlocked ? '⚠️ CORS blocked — ใช้ GitHub Actions แทน' : '✅ เช็คสำเร็จ', false);
+}
+
+// ══════════════════════════════════════════════════════════════
+// Render result card
+// ══════════════════════════════════════════════════════════════
+function renderResult(apiData, corsBlocked) {
+  const now = thaiTime(new Date().toISOString());
+  let html = `<div class="timestamp">🕐 ${now}</div>`;
+
+  html += `<div class="section-title">📡 Anthropic API</div>`;
+
+  if (corsBlocked) {
+    html += `
+      <div class="error-box">
+        ⚠️ Browser บล็อก request (CORS policy)<br><br>
+        Anthropic ไม่อนุญาตให้ browser call โดยตรง<br>
+        <b>วิธีแก้:</b> ใช้ GitHub Actions (check.js) แทน<br>
+        หรือรัน <code>node check.js</code> ในเครื่อง
+      </div>`;
+  } else if (apiData && apiData.error) {
+    html += `<div class="error-box">❌ ${apiData.error}</div>`;
+  } else if (apiData) {
+    const ok = apiData.httpStatus < 400;
+    html += `<span class="http-badge ${ok?'':'err'}">HTTP ${apiData.httpStatus} ${ok?'✅':'❌'}</span>`;
+    if (apiData.retryAfter) html += `<div class="metric-sub" style="margin-bottom:10px">⏳ Retry-After: ${apiData.retryAfter}s</div>`;
+
+    const rPct = usedPct(apiData.rpmRemaining, apiData.rpmLimit);
+    const tPct = usedPct(apiData.tpmRemaining, apiData.tpmLimit);
+    const iPct = usedPct(apiData.itpmRemaining, apiData.itpmLimit);
+    const oPct = usedPct(apiData.otpmRemaining, apiData.otpmLimit);
+
+    if (rPct !== null)
+      html += metricHTML('Requests / min', rPct,
+        `เหลือ ${apiData.rpmRemaining} / ${apiData.rpmLimit} &nbsp;·&nbsp; รีเซ็ต ${thaiTime(apiData.rpmReset)}`);
+
+    if (tPct !== null)
+      html += metricHTML('Tokens / min', tPct,
+        `เหลือ ${Number(apiData.tpmRemaining).toLocaleString()} / ${Number(apiData.tpmLimit).toLocaleString()} &nbsp;·&nbsp; รีเซ็ต ${thaiTime(apiData.tpmReset)}`);
+
+    if (iPct !== null)
+      html += metricHTML('Input Tokens / min', iPct,
+        `เหลือ ${Number(apiData.itpmRemaining).toLocaleString()} / ${Number(apiData.itpmLimit).toLocaleString()}`);
+
+    if (oPct !== null)
+      html += metricHTML('Output Tokens / min', oPct,
+        `เหลือ ${Number(apiData.otpmRemaining).toLocaleString()} / ${Number(apiData.otpmLimit).toLocaleString()}`);
+
+    if (rPct === null && tPct === null)
+      html += `<div class="no-data">ไม่มี rate-limit headers (tier ต่ำสุดอาจไม่แสดง)</div>`;
+  }
+
+  document.getElementById('result-body').innerHTML = html;
+  document.getElementById('result').style.display = 'block';
+}
+
+// ══════════════════════════════════════════════════════════════
+// Build Telegram text
+// ══════════════════════════════════════════════════════════════
+function buildTelegramMsg(apiData, corsBlocked) {
+  const now = thaiTime(new Date().toISOString());
+  const lines = [
+    `🤖 <b>Claude Rate Limit</b>`,
+    `🕐 ${now}`,
+    `━━━━━━━━━━━━━━━━━━━━`,
+    ``,
+    `📡 <b>Anthropic API</b>`,
+  ];
+
+  if (corsBlocked) {
+    lines.push(`⚠️ CORS blocked — ดูค่าใน GitHub Actions แทน`);
+  } else if (apiData && apiData.error) {
+    lines.push(`❌ ${apiData.error}`);
+  } else if (apiData) {
+    const ok = apiData.httpStatus < 400;
+    lines.push(`Status: <code>HTTP ${apiData.httpStatus}</code> ${ok ? '✅' : '❌'}`);
+    if (apiData.retryAfter) lines.push(`⏳ Retry-After: ${apiData.retryAfter}s`);
+
+    function addMetric(label, remaining, limit, reset) {
+      const pct = usedPct(remaining, limit);
+      if (pct === null) return;
+      const em = emojiFor(pct);
+      const barStr = '█'.repeat(Math.round(pct/10)) + '░'.repeat(10 - Math.round(pct/10));
+      lines.push(``);
+      lines.push(`${em} <b>${label}</b>`);
+      lines.push(`  <code>${barStr}</code>  ${pct}% used`);
+      lines.push(`  เหลือ ${Number(remaining).toLocaleString()} / ${Number(limit).toLocaleString()}${reset ? `   รีเซ็ต ${thaiTime(reset)}` : ''}`);
+    }
+
+    addMetric('Requests / min',      apiData.rpmRemaining,  apiData.rpmLimit,  apiData.rpmReset);
+    addMetric('Tokens / min',        apiData.tpmRemaining,  apiData.tpmLimit,  apiData.tpmReset);
+    addMetric('Input Tokens / min',  apiData.itpmRemaining, apiData.itpmLimit, null);
+    addMetric('Output Tokens / min', apiData.otpmRemaining, apiData.otpmLimit, null);
+  }
+
+  lines.push(`\n━━━━━━━━━━━━━━━━━━━━`);
+  lastReport = lines.join('\n');
+}
+
+// ══════════════════════════════════════════════════════════════
+// Send Telegram
+// ══════════════════════════════════════════════════════════════
+async function sendTelegram() {
+  if (!lastReport) return;
+  const tgToken = document.getElementById('tg-token').value.trim();
+  const tgChat  = document.getElementById('tg-chat').value.trim();
+  if (!tgToken || !tgChat) { setStatus('❌ กรุณาใส่ Telegram Token และ Chat ID'); return; }
+
+  document.getElementById('btn-send').disabled = true;
+  setStatus('กำลังส่ง Telegram...', true);
+
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${tgToken}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: tgChat, text: lastReport, parse_mode: 'HTML' }),
+    });
+    const data = await res.json();
+    if (data.ok) {
+      setStatus('✅ ส่ง Telegram สำเร็จ!');
+    } else {
+      setStatus(`❌ Telegram error: ${data.description}`);
+    }
+  } catch(e) {
+    setStatus(`❌ network error: ${e.message}`);
+  }
+
+  document.getElementById('btn-send').disabled = false;
+}
+</script>
+</body>
+</html>
